@@ -1,0 +1,2066 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Gaussian Process Visualizer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            color: #4a6fa5;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            color: #666;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .visualization-panel {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .control-panel {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            height: fit-content;
+        }
+
+        .viz-container {
+            position: relative;
+            height: 400px;
+            border: 2px solid #e0e6ed;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #f8fafc;
+            margin-bottom: 20px;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group h3 {
+            margin-bottom: 10px;
+            color: #4a6fa5;
+            font-size: 1.1em;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+            font-size: 0.9em;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .slider {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: #e0e6ed;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+            transition: background 0.3s;
+        }
+
+        .slider:hover {
+            background: #d1d8e0;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4a6fa5;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        .slider::-webkit-slider-thumb:hover {
+            background: #3a5a8a;
+            transform: scale(1.1);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4a6fa5;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        .value-display {
+            min-width: 50px;
+            text-align: center;
+            font-weight: bold;
+            color: #4a6fa5;
+            font-size: 0.9em;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            flex: 1;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .btn-primary {
+            background: #4a6fa5;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #3a5a8a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .btn-secondary {
+            background: #e0e6ed;
+            color: #4a5568;
+        }
+
+        .btn-secondary:hover {
+            background: #d1d8e0;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .info-panel {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+
+        .info-panel h3 {
+            color: #4a6fa5;
+            margin-bottom: 10px;
+        }
+
+        .info-panel p {
+            margin-bottom: 10px;
+            font-size: 0.95em;
+            color: #555;
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding: 0 10px;
+        }
+
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            opacity: 0.5;
+            transition: all 0.3s ease;
+            flex: 1;
+            max-width: 120px;
+        }
+
+        .step.active {
+            opacity: 1;
+            transform: scale(1.05);
+        }
+
+        .step-number {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #e0e6ed;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-bottom: 8px;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+        }
+
+        .step.active .step-number {
+            background: #4a6fa5;
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .step-label {
+            font-size: 0.8em;
+            text-align: center;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .animation-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 15px;
+            justify-content: center;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.8em;
+            background: rgba(255,255,255,0.7);
+            padding: 5px 10px;
+            border-radius: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.8em;
+            pointer-events: none;
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .matrix-vis {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+            grid-auto-rows: 40px;
+            gap: 5px;
+            padding: 15px;
+            overflow: auto;
+        }
+
+        .matrix-cell {
+            background: rgba(74, 111, 165, 0.1);
+            border: 1px solid rgba(74, 111, 165, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8em;
+            font-weight: bold;
+            color: rgba(74, 111, 165, 0.8);
+            transition: all 0.3s;
+            border-radius: 3px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .matrix-cell:hover {
+            background: rgba(74, 111, 165, 0.2);
+            transform: scale(1.05);
+            box-shadow: 0 0 10px rgba(74, 111, 165, 0.2);
+        }
+
+        .matrix-cell.highlight {
+            background: rgba(255, 107, 107, 0.2);
+            border-color: #ff6b6b;
+            transform: scale(1.05);
+            box-shadow: 0 0 10px rgba(255, 107, 107, 0.3);
+        }
+
+        .matrix-cell.diagonal {
+            background: rgba(76, 209, 196, 0.2);
+            border-color: #4ecdc4;
+        }
+
+        .kernel-fn-vis {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+        }
+
+        .process-description {
+            background: rgba(74, 111, 165, 0.05);
+            border-left: 3px solid #4a6fa5;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 5px 5px 0;
+        }
+
+        .process-description h4 {
+            color: #4a6fa5;
+            margin-bottom: 5px;
+        }
+
+        .process-description p {
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        /* New styles for kernel matrix animation card */
+        .kernel-matrix-card {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .kernel-matrix-card h3 {
+            color: #4a6fa5;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .matrix-animation-container {
+            height: 300px;
+            border: 2px solid #e0e6ed;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #f8fafc;
+            position: relative;
+        }
+
+        .matrix-animation {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+            grid-auto-rows: 40px;
+            gap: 5px;
+            padding: 15px;
+            overflow: auto;
+        }
+
+        .matrix-anim-cell {
+            background: rgba(74, 111, 165, 0.1);
+            border: 1px solid rgba(74, 111, 165, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8em;
+            font-weight: bold;
+            color: rgba(74, 111, 165, 0.8);
+            transition: all 0.3s;
+            border-radius: 3px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .matrix-anim-cell.highlight {
+            background: rgba(255, 107, 107, 0.2);
+            border-color: #ff6b6b;
+            transform: scale(1.05);
+            box-shadow: 0 0 10px rgba(255, 107, 107, 0.3);
+        }
+
+        .matrix-anim-cell.diagonal {
+            background: rgba(76, 209, 196, 0.2);
+            border-color: #4ecdc4;
+        }
+
+        .matrix-anim-cell::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(74, 111, 165, 0.5);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .matrix-anim-cell.show-calculation::after {
+            opacity: 1;
+        }
+
+        .matrix-anim-cell .calculation {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 5px;
+            border-radius: 3px;
+            font-size: 0.7em;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 2;
+            text-align: center;
+            width: 90%;
+        }
+
+        .matrix-anim-cell.show-calculation .calculation {
+            opacity: 1;
+        }
+
+        .matrix-anim-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .matrix-point-connector {
+            position: absolute;
+            height: 2px;
+            background: #4a6fa5;
+            transform-origin: left center;
+            z-index: 1;
+            opacity: 0.7;
+        }
+
+        .matrix-point-label {
+            position: absolute;
+            font-size: 0.7em;
+            font-weight: bold;
+            color: #4a6fa5;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 2px 5px;
+            border-radius: 3px;
+            z-index: 2;
+        }
+
+        .point-connection {
+            position: absolute;
+            background: #ff6b6b;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .point-connection.active {
+            opacity: 1;
+        }
+
+        .point-connection-line {
+            position: absolute;
+            background: #ff6b6b;
+            height: 2px;
+            transform-origin: left center;
+            z-index: 9;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .point-connection-line.active {
+            opacity: 0.7;
+        }
+
+        /* New styles for posterior mean extraction card */
+        .posterior-mean-card {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .posterior-mean-card h3 {
+            color: #4a6fa5;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .posterior-animation-container {
+            height: 300px;
+            border: 2px solid #e0e6ed;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #f8fafc;
+            position: relative;
+        }
+
+        .posterior-animation {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            overflow: auto;
+        }
+
+        .posterior-step {
+            margin-bottom: 15px;
+            background: rgba(74, 111, 165, 0.05);
+            border-radius: 8px;
+            padding: 10px;
+            display: none;
+        }
+
+        .posterior-step.active {
+            display: block;
+        }
+
+        .posterior-step-title {
+            font-weight: bold;
+            color: #4a6fa5;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+        }
+
+        .posterior-step-content {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .matrix-row {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+        }
+
+        .matrix-element {
+            width: 40px;
+            height: 40px;
+            background: rgba(74, 111, 165, 0.1);
+            border: 1px solid rgba(74, 111, 165, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8em;
+            font-weight: bold;
+            color: rgba(74, 111, 165, 0.8);
+            border-radius: 3px;
+            position: relative;
+        }
+
+        .matrix-element.highlight {
+            background: rgba(255, 107, 107, 0.2);
+            border-color: #ff6b6b;
+            transform: scale(1.05);
+            box-shadow: 0 0 10px rgba(255, 107, 107, 0.3);
+        }
+
+        .matrix-element.diagonal {
+            background: rgba(76, 209, 196, 0.2);
+            border-color: #4ecdc4;
+        }
+
+        .vector-element {
+            width: 40px;
+            height: 40px;
+            background: rgba(76, 209, 196, 0.2);
+            border: 1px solid #4ecdc4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8em;
+            font-weight: bold;
+            color: rgba(74, 111, 165, 0.8);
+            border-radius: 3px;
+        }
+
+        .vector-element.highlight {
+            background: rgba(255, 107, 107, 0.2);
+            border-color: #ff6b6b;
+            transform: scale(1.05);
+            box-shadow: 0 0 10px rgba(255, 107, 107, 0.3);
+        }
+
+        .calculation-text {
+            font-size: 0.9em;
+            color: #555;
+            text-align: center;
+            margin: 5px 0;
+        }
+
+        .posterior-anim-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .posterior-progress {
+            height: 5px;
+            background: #e0e6ed;
+            border-radius: 3px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .posterior-progress-bar {
+            height: 100%;
+            background: #4a6fa5;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        /* New styles for physical representation explanations */
+        .physical-representation {
+            margin-top: 15px;
+            padding: 10px;
+            background: rgba(74, 111, 165, 0.05);
+            border-radius: 5px;
+            border-left: 3px solid #4a6fa5;
+        }
+
+        .physical-representation h4 {
+            color: #4a6fa5;
+            margin-bottom: 5px;
+        }
+
+        .physical-representation p {
+            font-size: 0.85em;
+            color: #555;
+        }
+
+        /* New styles for pause button */
+        .btn-tertiary {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .btn-tertiary:hover {
+            background: #e74c3c;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Gaussian Process Visual Explorer</h1>
+            <p>Interactively learn how Gaussian Processes work through animated visualizations of the mathematical processes behind the scenes</p>
+        </div>
+
+        <div class="step-indicator">
+            <div class="step active" data-step="0">
+                <div class="step-number">1</div>
+                <div class="step-label">Input Data</div>
+            </div>
+            <div class="step" data-step="1">
+                <div class="step-number">2</div>
+                <div class="step-label">Kernel Matrix</div>
+            </div>
+            <div class="step" data-step="2">
+                <div class="step-number">3</div>
+                <div class="step-label">Posterior Mean</div>
+            </div>
+            <div class="step" data-step="3">
+                <div class="step-number">4</div>
+                <div class="step-label">Uncertainty</div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="visualization-panel">
+                <div class="viz-container">
+                    <canvas id="mainCanvas"></canvas>
+                    <div class="matrix-vis" id="matrixVis"></div>
+                    <div class="kernel-fn-vis" id="kernelFnVis"></div>
+                    <div class="tooltip" id="tooltip"></div>
+                </div>
+                
+                <div class="animation-controls">
+                    <button class="btn btn-primary" id="playBtn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                        </svg>
+                        Play Animation
+                    </button>
+                    <button class="btn btn-tertiary" id="pauseBtn" style="display: none;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="6" y="4" width="4" height="16"></rect>
+                            <rect x="14" y="4" width="4" height="16"></rect>
+                        </svg>
+                        Pause
+                    </button>
+                    <button class="btn btn-secondary" id="stepBtn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                            <polyline points="12 5 19 12 12 19"></polyline>
+                        </svg>
+                        Next Step
+                    </button>
+                    <button class="btn btn-secondary" id="resetBtn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                            <path d="M3 3v5h5"></path>
+                        </svg>
+                        Reset
+                    </button>
+                </div>
+
+                <!-- Kernel Matrix Animation Card -->
+                <div class="kernel-matrix-card">
+                    <h3>Kernel Matrix Formation</h3>
+                    <div class="matrix-animation-container">
+                        <div class="matrix-animation" id="matrixAnimation"></div>
+                    </div>
+                    <div class="matrix-anim-controls">
+                        <button class="btn btn-secondary" id="animMatrixBtn">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                            </svg>
+                            Animate Matrix
+                        </button>
+                        <button class="btn btn-tertiary" id="pauseMatrixBtn" style="display: none;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="6" y="4" width="4" height="16"></rect>
+                                <rect x="14" y="4" width="4" height="16"></rect>
+                            </svg>
+                            Pause
+                        </button>
+                        <button class="btn btn-secondary" id="explainMatrixBtn">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="16" x2="12" y2="12"></line>
+                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                            </svg>
+                            Explain Calculation
+                        </button>
+                    </div>
+                    <div class="physical-representation">
+                        <h4>Physical Representation in Data Space</h4>
+                        <p>The kernel matrix (K) represents the covariance structure between all pairs of data points. Each element K[i][j] shows how much point i influences point j based on their distance and the kernel parameters. This creates a smoothness constraint on possible functions.</p>
+                    </div>
+                </div>
+
+                <!-- New Posterior Mean Extraction Card -->
+                <div class="posterior-mean-card">
+                    <h3>Posterior Mean Calculation</h3>
+                    <div class="posterior-animation-container">
+                        <div class="posterior-animation" id="posteriorAnimation">
+                            <div class="posterior-step" id="posteriorStep1">
+                                <div class="posterior-step-title">Step 1: Kernel Matrix (K)</div>
+                                <div class="posterior-step-content" id="kernelMatrixDisplay"></div>
+                                <div class="physical-representation">
+                                    <p>The kernel matrix defines the covariance structure between all training points. It encodes how much each point influences others based on their distance.</p>
+                                </div>
+                            </div>
+                            <div class="posterior-step" id="posteriorStep2">
+                                <div class="posterior-step-title">Step 2: Inverse of K (K⁻¹)</div>
+                                <div class="posterior-step-content" id="inverseMatrixDisplay"></div>
+                                <div class="physical-representation">
+                                    <p>The inverse matrix (K⁻¹) represents the precision matrix. It determines how much each observation should contribute to the final prediction, accounting for correlations between points.</p>
+                                </div>
+                            </div>
+                            <div class="posterior-step" id="posteriorStep3">
+                                <div class="posterior-step-title">Step 3: Observations (y)</div>
+                                <div class="posterior-step-content" id="observationVectorDisplay"></div>
+                                <div class="physical-representation">
+                                    <p>The observation vector contains the actual function values at the training points. These are the values we want to interpolate between.</p>
+                                </div>
+                            </div>
+                            <div class="posterior-step" id="posteriorStep4">
+                                <div class="posterior-step-title">Step 4: Multiply K⁻¹ and y</div>
+                                <div class="posterior-step-content" id="intermediateResultDisplay"></div>
+                                <div class="physical-representation">
+                                    <p>K⁻¹y represents the weights for each observation. It's a projection of the data onto the space defined by the kernel, determining how much each point contributes to predictions.</p>
+                                </div>
+                            </div>
+                            <div class="posterior-step" id="posteriorStep5">
+                                <div class="posterior-step-title">Step 5: Final Posterior Mean</div>
+                                <div class="posterior-step-content" id="posteriorMeanDisplay"></div>
+                                <div class="calculation-text">
+                                    Posterior Mean = K*ᵀ · (K⁻¹ · y)<br>
+                                    Where K* is the covariance between test points and training points
+                                </div>
+                                <div class="physical-representation">
+                                    <p>The posterior mean is a weighted combination of kernel functions centered at each data point. The weights (K⁻¹y) determine how much each point contributes to the prediction at any location.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="posterior-progress">
+                        <div class="posterior-progress-bar" id="posteriorProgressBar"></div>
+                    </div>
+                    <div class="posterior-anim-controls">
+                        <button class="btn btn-secondary" id="animPosteriorBtn">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                            </svg>
+                            Animate Calculation
+                        </button>
+                        <button class="btn btn-tertiary" id="pausePosteriorBtn" style="display: none;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="6" y="4" width="4" height="16"></rect>
+                                <rect x="14" y="4" width="4" height="16"></rect>
+                            </svg>
+                            Pause
+                        </button>
+                        <button class="btn btn-secondary" id="stepPosteriorBtn">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                                <polyline points="12 5 19 12 12 19"></polyline>
+                            </svg>
+                            Next Step
+                        </button>
+                    </div>
+                </div>
+
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #ff6b6b;"></div>
+                        <span>Data Points</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #4ecdc4;"></div>
+                        <span>Posterior Mean</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: rgba(76, 209, 196, 0.3);"></div>
+                        <span>Confidence Band</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: rgba(74, 111, 165, 0.3);"></div>
+                        <span>Kernel Correlations</span>
+                    </div>
+                </div>
+
+                <div class="process-description" id="processDesc">
+                    <h4>How Gaussian Processes Work</h4>
+                    <p>A Gaussian Process is a powerful non-parametric method that defines a distribution over functions. It's completely specified by its mean function and covariance (kernel) function. As you add data points, the GP updates its posterior distribution to reflect both the observed data and its uncertainty in regions without data.</p>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="control-group">
+                    <h3>Kernel Parameters</h3>
+                    
+                    <label for="lengthScale">Length Scale (σₗ)</label>
+                    <div class="slider-container">
+                        <input type="range" class="slider" id="lengthScale" min="0.1" max="2" step="0.05" value="0.5">
+                        <div class="value-display" id="lengthScaleValue">0.5</div>
+                    </div>
+                    <small>Controls how far correlations extend</small>
+
+                    <label for="signalVariance" style="margin-top: 15px;">Signal Variance (σₛ²)</label>
+                    <div class="slider-container">
+                        <input type="range" class="slider" id="signalVariance" min="0.1" max="2" step="0.1" value="1.0">
+                        <div class="value-display" id="signalVarianceValue">1.0</div>
+                    </div>
+                    <small>Controls the amplitude of functions</small>
+
+                    <label for="noiseVariance" style="margin-top: 15px;">Noise Variance (σₙ²)</label>
+                    <div class="slider-container">
+                        <input type="range" class="slider" id="noiseVariance" min="0" max="0.5" step="0.01" value="0.05">
+                        <div class="value-display" id="noiseVarianceValue">0.05</div>
+                    </div>
+                    <small>Controls observation noise</small>
+                </div>
+
+                <div class="control-group">
+                    <h3>Data Controls</h3>
+                    <div class="button-group">
+                        <button class="btn btn-primary" id="addPointBtn">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="16"></line>
+                                <line x1="8" y1="12" x2="16" y2="12"></line>
+                            </svg>
+                            Add Point
+                        </button>
+                        <button class="btn btn-secondary" id="clearBtn">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 6h18"></path>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                            Clear
+                        </button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <h3>Animation Settings</h3>
+                    <label for="animSpeed">Animation Speed</label>
+                    <div class="slider-container">
+                        <input type="range" class="slider" id="animSpeed" min="0.5" max="3" step="0.1" value="1.0">
+                        <div class="value-display" id="animSpeedValue">1.0x</div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <h3>Kernel Type</h3>
+                    <div class="button-group">
+                        <button class="btn btn-secondary active" id="rbfKernelBtn">RBF</button>
+                        <button class="btn btn-secondary" id="maternKernelBtn">Matérn</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-panel">
+            <h3>Understanding Gaussian Processes</h3>
+            <p><strong>Step 1: Input Points</strong> - These are your observed data that the GP will learn from. Each (x,y) pair tells the GP "the function must pass near this point." The more data points you add, the more constrained the possible functions become.</p>
+            <p><strong>Step 2: Kernel Matrix</strong> - The kernel defines how points relate to each other. Points close in input space (small x-distance) are highly correlated (bright cells), while distant points are less related. The kernel encodes our assumptions about the function's smoothness.</p>
+            <p><strong>Step 3: Posterior Mean</strong> - The GP's best estimate of the underlying function, smoothly interpolating between data points. The mean is a weighted average of possible functions, with weights determined by the kernel. It passes exactly through points when there's no noise (σₙ²=0).</p>
+            <p><strong>Step 4: Uncertainty</strong> - The confidence bands show where the GP is uncertain (wide bands) and where it's confident (narrow bands). Uncertainty grows as we move away from observed data points. The width depends on the kernel parameters and data density.</p>
+            <br>
+            <p><strong>Tip:</strong> Adjust the kernel parameters to see how they affect the predictions. The length scale controls how quickly correlations decay, signal variance affects function amplitude, and noise variance accounts for observation noise.</p>
+        </div>
+    </div>
+
+    <script>
+        class GaussianProcessVisualizer {
+            constructor() {
+                this.canvas = document.getElementById('mainCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.matrixVis = document.getElementById('matrixVis');
+                this.kernelFnVis = document.getElementById('kernelFnVis');
+                this.tooltip = document.getElementById('tooltip');
+                this.processDesc = document.getElementById('processDesc');
+                this.matrixAnimation = document.getElementById('matrixAnimation');
+                this.posteriorAnimation = document.getElementById('posteriorAnimation');
+                
+                this.setupCanvas();
+                this.setupEventListeners();
+                
+                this.dataPoints = [];
+                this.currentStep = 0;
+                this.isAnimating = false;
+                this.animationProgress = 0;
+                this.animationSpeed = 1.0;
+                this.kernelType = 'rbf'; // 'rbf' or 'matern'
+                this.posteriorStep = 0;
+                this.animationInterval = null;
+                this.posteriorAnimationInterval = null;
+                this.matrixAnimationInterval = null;
+                
+                // GP parameters
+                this.lengthScale = 0.5;
+                this.signalVariance = 1.0;
+                this.noiseVariance = 0.05;
+                this.maternNu = 1.5; // For Matérn kernel
+                
+                // Elements for point connections
+                this.pointConnections = [];
+                this.connectionLines = [];
+                
+                // Initialize with some data
+                this.addDataPoint(0.2, 0.8);
+                this.addDataPoint(0.5, 0.3);
+                this.addDataPoint(0.8, 0.6);
+                this.updateVisualization();
+                
+                // Update descriptions
+                this.updateProcessDescription();
+                
+                // Initialize matrix animation
+                this.updateMatrixAnimation();
+                this.updatePosteriorAnimation();
+            }
+
+            setupCanvas() {
+                const rect = this.canvas.getBoundingClientRect();
+                this.canvas.width = rect.width * devicePixelRatio;
+                this.canvas.height = rect.height * devicePixelRatio;
+                this.ctx.scale(devicePixelRatio, devicePixelRatio);
+                this.canvasWidth = rect.width;
+                this.canvasHeight = rect.height;
+            }
+
+            setupEventListeners() {
+                // Canvas click to add points
+                this.canvas.addEventListener('click', (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const x = (e.clientX - rect.left) / this.canvasWidth;
+                    const y = 1 - (e.clientY - rect.top) / this.canvasHeight;
+                    this.addDataPoint(x, y);
+                });
+
+                // Canvas mouse move for tooltip
+                this.canvas.addEventListener('mousemove', (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const x = (e.clientX - rect.left) / this.canvasWidth;
+                    const y = 1 - (e.clientY - rect.top) / this.canvasHeight;
+                    
+                    if (this.currentStep === 1 && this.dataPoints.length > 0) {
+                        // Show kernel values in tooltip
+                        const closestPoint = this.findClosestPoint(x);
+                        const kernelVal = this.kernelFunction(x, closestPoint.x);
+                        
+                        this.tooltip.style.left = `${e.clientX + 10}px`;
+                        this.tooltip.style.top = `${e.clientY + 10}px`;
+                        this.tooltip.style.opacity = '1';
+                        this.tooltip.innerHTML = `
+                            K(${x.toFixed(2)}, ${closestPoint.x.toFixed(2)}) = ${kernelVal.toFixed(3)}<br>
+                            Distance: ${Math.abs(x - closestPoint.x).toFixed(3)}
+                        `;
+                    } else {
+                        this.tooltip.style.opacity = '0';
+                    }
+                });
+
+                this.canvas.addEventListener('mouseout', () => {
+                    this.tooltip.style.opacity = '0';
+                });
+
+                // Parameter controls
+                document.getElementById('lengthScale').addEventListener('input', (e) => {
+                    this.lengthScale = parseFloat(e.target.value);
+                    document.getElementById('lengthScaleValue').textContent = this.lengthScale.toFixed(2);
+                    this.updateVisualization();
+                });
+
+                document.getElementById('signalVariance').addEventListener('input', (e) => {
+                    this.signalVariance = parseFloat(e.target.value);
+                    document.getElementById('signalVarianceValue').textContent = this.signalVariance.toFixed(1);
+                    this.updateVisualization();
+                });
+
+                document.getElementById('noiseVariance').addEventListener('input', (e) => {
+                    this.noiseVariance = parseFloat(e.target.value);
+                    document.getElementById('noiseVarianceValue').textContent = this.noiseVariance.toFixed(2);
+                    this.updateVisualization();
+                });
+
+                document.getElementById('animSpeed').addEventListener('input', (e) => {
+                    this.animationSpeed = parseFloat(e.target.value);
+                    document.getElementById('animSpeedValue').textContent = this.animationSpeed.toFixed(1) + 'x';
+                });
+
+                // Buttons
+                document.getElementById('playBtn').addEventListener('click', () => {
+                    this.playAnimation();
+                });
+
+                document.getElementById('pauseBtn').addEventListener('click', () => {
+                    this.pauseAnimation();
+                });
+
+                document.getElementById('stepBtn').addEventListener('click', () => {
+                    this.stepAnimation();
+                });
+
+                document.getElementById('resetBtn').addEventListener('click', () => {
+                    this.resetAnimation();
+                });
+
+                document.getElementById('addPointBtn').addEventListener('click', () => {
+                    this.addRandomPoint();
+                });
+
+                document.getElementById('clearBtn').addEventListener('click', () => {
+                    this.clearPoints();
+                });
+
+                // Kernel type buttons
+                document.getElementById('rbfKernelBtn').addEventListener('click', () => {
+                    this.kernelType = 'rbf';
+                    document.getElementById('rbfKernelBtn').classList.add('active');
+                    document.getElementById('maternKernelBtn').classList.remove('active');
+                    this.updateVisualization();
+                });
+
+                document.getElementById('maternKernelBtn').addEventListener('click', () => {
+                    this.kernelType = 'matern';
+                    document.getElementById('maternKernelBtn').classList.add('active');
+                    document.getElementById('rbfKernelBtn').classList.remove('active');
+                    this.updateVisualization();
+                });
+
+                // Matrix animation buttons
+                document.getElementById('animMatrixBtn').addEventListener('click', () => {
+                    this.animateMatrixFormation();
+                });
+
+                document.getElementById('pauseMatrixBtn').addEventListener('click', () => {
+                    this.pauseMatrixAnimation();
+                });
+
+                document.getElementById('explainMatrixBtn').addEventListener('click', () => {
+                    this.explainMatrixCalculations();
+                });
+
+                // Posterior animation buttons
+                document.getElementById('animPosteriorBtn').addEventListener('click', () => {
+                    this.animatePosteriorCalculation();
+                });
+
+                document.getElementById('pausePosteriorBtn').addEventListener('click', () => {
+                    this.pausePosteriorAnimation();
+                });
+
+                document.getElementById('stepPosteriorBtn').addEventListener('click', () => {
+                    this.stepPosteriorCalculation();
+                });
+            }
+
+            kernelFunction(x1, x2) {
+                const distance = Math.abs(x1 - x2) / this.lengthScale;
+                
+                if (this.kernelType === 'rbf') {
+                    // Radial Basis Function (Squared Exponential) kernel
+                    return this.signalVariance * Math.exp(-0.5 * distance * distance);
+                } else {
+                    // Matérn kernel (approximation for ν=1.5)
+                    const sqrt3 = Math.sqrt(3);
+                    return this.signalVariance * (1 + sqrt3 * distance) * Math.exp(-sqrt3 * distance);
+                }
+            }
+
+            computeKernelMatrix() {
+                const n = this.dataPoints.length;
+                const K = [];
+                
+                for (let i = 0; i < n; i++) {
+                    K[i] = [];
+                    for (let j = 0; j < n; j++) {
+                        K[i][j] = this.kernelFunction(this.dataPoints[i].x, this.dataPoints[j].x);
+                        if (i === j) {
+                            K[i][j] += this.noiseVariance;
+                        }
+                    }
+                }
+                
+                return K;
+            }
+
+            invertMatrix(matrix) {
+                const n = matrix.length;
+                if (n === 0) return [];
+                
+                // Create augmented matrix [matrix | I]
+                const augmented = matrix.map((row, i) => [
+                    ...row,
+                    ...Array(n).fill(0).map((_, j) => i === j ? 1 : 0)
+                ]);
+
+                // Gaussian elimination with partial pivoting
+                for (let i = 0; i < n; i++) {
+                    // Partial pivoting
+                    let maxRow = i;
+                    for (let k = i + 1; k < n; k++) {
+                        if (Math.abs(augmented[k][i]) > Math.abs(augmented[maxRow][i])) {
+                            maxRow = k;
+                        }
+                    }
+                    [augmented[i], augmented[maxRow]] = [augmented[maxRow], augmented[i]];
+
+                    // Make diagonal element 1
+                    const divisor = augmented[i][i];
+                    if (Math.abs(divisor) < 1e-10) continue;
+                    
+                    for (let j = 0; j < 2 * n; j++) {
+                        augmented[i][j] /= divisor;
+                    }
+
+                    // Eliminate column
+                    for (let k = 0; k < n; k++) {
+                        if (k !== i) {
+                            const factor = augmented[k][i];
+                            for (let j = 0; j < 2 * n; j++) {
+                                augmented[k][j] -= factor * augmented[i][j];
+                            }
+                        }
+                    }
+                }
+
+                // Extract inverse from augmented matrix
+                return augmented.map(row => row.slice(n));
+            }
+
+            computePosterior() {
+                if (this.dataPoints.length === 0) {
+                    return { mean: [], variance: [] };
+                }
+
+                const testX = Array.from({length: 100}, (_, i) => i / 99);
+                const K = this.computeKernelMatrix();
+                const Kinv = this.invertMatrix(K);
+                const y = this.dataPoints.map(p => p.y);
+
+                const posterior = testX.map(x => {
+                    // Compute k* (covariance between test point and training points)
+                    const kStar = this.dataPoints.map(p => this.kernelFunction(x, p.x));
+                    
+                    // Compute k** (covariance of test point with itself)
+                    const kStarStar = this.kernelFunction(x, x);
+                    
+                    // Posterior mean: k*^T K^-1 y
+                    let mean = 0;
+                    for (let i = 0; i < y.length; i++) {
+                        let sum = 0;
+                        for (let j = 0; j < y.length; j++) {
+                            sum += Kinv[i][j] * y[j];
+                        }
+                        mean += kStar[i] * sum;
+                    }
+                    
+                    // Posterior variance: k** - k*^T K^-1 k*
+                    let variance = kStarStar;
+                    for (let i = 0; i < kStar.length; i++) {
+                        let sum = 0;
+                        for (let j = 0; j < kStar.length; j++) {
+                            sum += Kinv[i][j] * kStar[j];
+                        }
+                        variance -= kStar[i] * sum;
+                    }
+                    
+                    // Ensure variance is non-negative (numerical stability)
+                    variance = Math.max(0, variance);
+                    
+                    return { x, mean, variance };
+                });
+
+                return posterior;
+            }
+
+            addDataPoint(x, y) {
+                this.dataPoints.push({ x, y });
+                this.updateVisualization();
+                this.updateMatrixAnimation();
+                this.updatePosteriorAnimation();
+                this.createPointConnectionElements();
+            }
+
+            addRandomPoint() {
+                const x = Math.random();
+                const y = Math.random();
+                this.addDataPoint(x, y);
+            }
+
+            clearPoints() {
+                this.dataPoints = [];
+                this.updateVisualization();
+                this.updateMatrixAnimation();
+                this.updatePosteriorAnimation();
+                this.clearPointConnectionElements();
+            }
+
+            findClosestPoint(x) {
+                if (this.dataPoints.length === 0) return null;
+                
+                let closest = this.dataPoints[0];
+                let minDist = Math.abs(x - closest.x);
+                
+                for (let i = 1; i < this.dataPoints.length; i++) {
+                    const dist = Math.abs(x - this.dataPoints[i].x);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        closest = this.dataPoints[i];
+                    }
+                }
+                
+                return closest;
+            }
+
+            updateVisualization() {
+                this.draw();
+                this.updateProcessDescription();
+            }
+
+            draw() {
+                this.ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
+                
+                // Draw grid
+                this.drawGrid();
+                
+                // Handle different visualization steps
+                switch (this.currentStep) {
+                    case 0: // Input points
+                        this.drawDataPoints();
+                        break;
+                        
+                    case 1: // Kernel matrix
+                        this.drawKernelVisualization();
+                        this.drawDataPoints();
+                        break;
+                        
+                    case 2: // Posterior mean
+                        const posterior = this.computePosterior();
+                        this.drawPosteriorMean(posterior);
+                        this.drawDataPoints();
+                        break;
+                        
+                    case 3: // Full posterior with uncertainty
+                        const fullPosterior = this.computePosterior();
+                        this.drawFullPosterior(fullPosterior);
+                        this.drawDataPoints();
+                        break;
+                }
+            }
+
+            drawGrid() {
+                this.ctx.strokeStyle = '#e0e6ed';
+                this.ctx.lineWidth = 1;
+                
+                // Vertical grid lines
+                for (let i = 0; i <= 10; i++) {
+                    const x = (i / 10) * this.canvasWidth;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x, 0);
+                    this.ctx.lineTo(x, this.canvasHeight);
+                    this.ctx.stroke();
+                }
+                
+                // Horizontal grid lines
+                for (let i = 0; i <= 10; i++) {
+                    const y = (i / 10) * this.canvasHeight;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(0, y);
+                    this.ctx.lineTo(this.canvasWidth, y);
+                    this.ctx.stroke();
+                }
+            }
+
+            drawDataPoints() {
+                this.ctx.fillStyle = '#ff6b6b';
+                this.ctx.strokeStyle = '#ffffff';
+                this.ctx.lineWidth = 2;
+                
+                for (const point of this.dataPoints) {
+                    const x = point.x * this.canvasWidth;
+                    const y = (1 - point.y) * this.canvasHeight;
+                    
+                    this.ctx.beginPath();
+                    this.ctx.arc(x, y, 6, 0, 2 * Math.PI);
+                    this.ctx.fill();
+                    this.ctx.stroke();
+                }
+            }
+
+            drawKernelVisualization() {
+                if (this.dataPoints.length === 0) return;
+                
+                // Show matrix visualization
+                this.matrixVis.style.display = 'grid';
+                this.matrixVis.innerHTML = '';
+                
+                const K = this.computeKernelMatrix();
+                const n = K.length;
+                
+                // Create matrix cells
+                for (let i = 0; i < n; i++) {
+                    for (let j = 0; j < n; j++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'matrix-cell';
+                        if (i === j) cell.classList.add('diagonal');
+                        cell.dataset.row = i;
+                        cell.dataset.col = j;
+                        
+                        // Add hover event listeners
+                        cell.addEventListener('mouseenter', () => this.highlightMatrixCell(i, j));
+                        cell.addEventListener('mouseleave', () => this.unhighlightMatrixCell());
+                        
+                        cell.textContent = K[i][j].toFixed(2);
+                        
+                        // Color intensity based on value
+                        const intensity = K[i][j] / Math.max(...K.flat());
+                        cell.style.backgroundColor = `rgba(74, 111, 165, ${intensity * 0.7})`;
+                        cell.style.color = intensity > 0.5 ? 'white' : 'rgba(74, 111, 165, 0.8)';
+                        
+                        this.matrixVis.appendChild(cell);
+                    }
+                }
+                
+                // Draw kernel connections
+                this.ctx.strokeStyle = 'rgba(74, 111, 165, 0.3)';
+                this.ctx.lineWidth = 1;
+                
+                for (let i = 0; i < this.dataPoints.length; i++) {
+                    for (let j = i + 1; j < this.dataPoints.length; j++) {
+                        const p1 = this.dataPoints[i];
+                        const p2 = this.dataPoints[j];
+                        const correlation = this.kernelFunction(p1.x, p2.x);
+                        
+                        this.ctx.strokeStyle = `rgba(74, 111, 165, ${correlation * 0.7})`;
+                        this.ctx.lineWidth = correlation * 4;
+                        
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(
+                            p1.x * this.canvasWidth,
+                            (1 - p1.y) * this.canvasHeight
+                        );
+                        this.ctx.lineTo(
+                            p2.x * this.canvasWidth,
+                            (1 - p2.y) * this.canvasHeight
+                        );
+                        this.ctx.stroke();
+                    }
+                }
+            }
+
+            highlightMatrixCell(row, col) {
+                // Highlight the cell
+                const cells = document.querySelectorAll('.matrix-cell');
+                cells.forEach(cell => {
+                    cell.style.opacity = '0.5';
+                    cell.style.filter = 'grayscale(80%)';
+                });
+                
+                const targetCell = document.querySelector(`.matrix-cell[data-row="${row}"][data-col="${col}"]`);
+                if (targetCell) {
+                    targetCell.style.opacity = '1';
+                    targetCell.style.filter = 'none';
+                    targetCell.classList.add('highlight');
+                }
+                
+                // Highlight the corresponding points and connection
+                this.highlightPointsAndConnection(row, col);
+            }
+
+            unhighlightMatrixCell() {
+                const cells = document.querySelectorAll('.matrix-cell');
+                cells.forEach(cell => {
+                    cell.style.opacity = '1';
+                    cell.style.filter = 'none';
+                    cell.classList.remove('highlight');
+                });
+                
+                this.unhighlightPointsAndConnection();
+            }
+
+            createPointConnectionElements() {
+                // Clear existing elements
+                this.clearPointConnectionElements();
+                
+                // Create connection elements for each point pair
+                const vizContainer = document.querySelector('.viz-container');
+                
+                // Create point markers
+                for (let i = 0; i < this.dataPoints.length; i++) {
+                    const point = this.dataPoints[i];
+                    const marker = document.createElement('div');
+                    marker.className = 'point-connection';
+                    marker.dataset.index = i;
+                    vizContainer.appendChild(marker);
+                    this.pointConnections.push(marker);
+                }
+                
+                // Create connection lines
+                for (let i = 0; i < this.dataPoints.length; i++) {
+                    for (let j = i + 1; j < this.dataPoints.length; j++) {
+                        const line = document.createElement('div');
+                        line.className = 'point-connection-line';
+                        line.dataset.row = i;
+                        line.dataset.col = j;
+                        vizContainer.appendChild(line);
+                        this.connectionLines.push(line);
+                    }
+                }
+            }
+
+            clearPointConnectionElements() {
+                // Remove all connection elements
+                this.pointConnections.forEach(el => el.remove());
+                this.connectionLines.forEach(el => el.remove());
+                this.pointConnections = [];
+                this.connectionLines = [];
+            }
+
+            highlightPointsAndConnection(row, col) {
+                // Convert to point indices (matrix is symmetric)
+                const point1 = Math.min(row, col);
+                const point2 = Math.max(row, col);
+                
+                // Highlight the two points
+                this.pointConnections.forEach((marker, i) => {
+                    if (i === point1 || i === point2) {
+                        const point = this.dataPoints[i];
+                        const x = point.x * this.canvasWidth;
+                        const y = (1 - point.y) * this.canvasHeight;
+                        
+                        marker.style.left = `${x}px`;
+                        marker.style.top = `${y}px`;
+                        marker.classList.add('active');
+                    } else {
+                        marker.classList.remove('active');
+                    }
+                });
+                
+                // Highlight the connection between them
+                this.connectionLines.forEach(line => {
+                    if ((parseInt(line.dataset.row) === point1 && parseInt(line.dataset.col) === point2)) {
+                        const p1 = this.dataPoints[point1];
+                        const p2 = this.dataPoints[point2];
+                        
+                        const x1 = p1.x * this.canvasWidth;
+                        const y1 = (1 - p1.y) * this.canvasHeight;
+                        const x2 = p2.x * this.canvasWidth;
+                        const y2 = (1 - p2.y) * this.canvasHeight;
+                        
+                        const dx = x2 - x1;
+                        const dy = y2 - y1;
+                        const length = Math.sqrt(dx * dx + dy * dy);
+                        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                        
+                        line.style.left = `${x1}px`;
+                        line.style.top = `${y1}px`;
+                        line.style.width = `${length}px`;
+                        line.style.transform = `rotate(${angle}deg)`;
+                        line.classList.add('active');
+                    } else {
+                        line.classList.remove('active');
+                    }
+                });
+            }
+
+            unhighlightPointsAndConnection() {
+                this.pointConnections.forEach(marker => {
+                    marker.classList.remove('active');
+                });
+                
+                this.connectionLines.forEach(line => {
+                    line.classList.remove('active');
+                });
+            }
+
+            drawPosteriorMean(posterior) {
+                if (posterior.length === 0) return;
+                
+                // Hide matrix visualization
+                this.matrixVis.style.display = 'none';
+                
+                // Draw posterior mean
+                this.ctx.strokeStyle = '#4ecdc4';
+                this.ctx.lineWidth = 3;
+                this.ctx.beginPath();
+                
+                for (let i = 0; i < posterior.length; i++) {
+                    const x = posterior[i].x * this.canvasWidth;
+                    const y = (1 - posterior[i].mean) * this.canvasHeight;
+                    
+                    if (i === 0) {
+                        this.ctx.moveTo(x, y);
+                    } else {
+                        this.ctx.lineTo(x, y);
+                    }
+                }
+                
+                this.ctx.stroke();
+            }
+
+            drawFullPosterior(posterior) {
+                if (posterior.length === 0) return;
+                
+                // Hide matrix visualization
+                this.matrixVis.style.display = 'none';
+                
+                // Draw confidence band first (so mean is on top)
+                this.ctx.fillStyle = 'rgba(76, 209, 196, 0.3)';
+                this.ctx.beginPath();
+                
+                // Upper bound
+                for (let i = 0; i < posterior.length; i++) {
+                    const x = posterior[i].x * this.canvasWidth;
+                    const y = (1 - (posterior[i].mean + 2 * Math.sqrt(posterior[i].variance))) * this.canvasHeight;
+                    
+                    if (i === 0) {
+                        this.ctx.moveTo(x, y);
+                    } else {
+                        this.ctx.lineTo(x, y);
+                    }
+                }
+                
+                // Lower bound (reverse order)
+                for (let i = posterior.length - 1; i >= 0; i--) {
+                    const x = posterior[i].x * this.canvasWidth;
+                    const y = (1 - (posterior[i].mean - 2 * Math.sqrt(posterior[i].variance))) * this.canvasHeight;
+                    this.ctx.lineTo(x, y);
+                }
+                
+                this.ctx.closePath();
+                this.ctx.fill();
+                
+                // Draw posterior mean on top
+                this.drawPosteriorMean(posterior);
+            }
+
+            playAnimation() {
+                if (this.isAnimating) return;
+                
+                this.isAnimating = true;
+                document.getElementById('playBtn').style.display = 'none';
+                document.getElementById('pauseBtn').style.display = 'flex';
+                
+                this.currentStep = 0;
+                this.updateStepIndicator();
+                
+                this.animationInterval = setInterval(() => {
+                    if (this.currentStep >= 3) {
+                        this.pauseAnimation();
+                        return;
+                    }
+                    
+                    this.currentStep++;
+                    this.updateStepIndicator();
+                    this.updateVisualization();
+                }, 1000 / this.animationSpeed);
+                
+                this.updateVisualization();
+            }
+
+            pauseAnimation() {
+                if (!this.isAnimating) return;
+                
+                this.isAnimating = false;
+                clearInterval(this.animationInterval);
+                document.getElementById('playBtn').style.display = 'flex';
+                document.getElementById('pauseBtn').style.display = 'none';
+            }
+
+            stepAnimation() {
+                this.pauseAnimation();
+                
+                if (this.currentStep < 3) {
+                    this.currentStep++;
+                    this.updateStepIndicator();
+                    this.updateVisualization();
+                }
+            }
+
+            resetAnimation() {
+                this.pauseAnimation();
+                this.currentStep = 0;
+                this.updateStepIndicator();
+                this.updateVisualization();
+            }
+
+            updateStepIndicator() {
+                document.querySelectorAll('.step').forEach((step, index) => {
+                    if (index === this.currentStep) {
+                        step.classList.add('active');
+                    } else {
+                        step.classList.remove('active');
+                    }
+                });
+            }
+
+            updateProcessDescription() {
+                let description = '';
+                
+                switch (this.currentStep) {
+                    case 0:
+                        description = `
+                            <h4>Input Data Points</h4>
+                            <p>These are your observed data that constrain the possible functions. Each (x,y) pair tells the GP "the function must pass near this point." The more data points you add, the more constrained the possible functions become.</p>
+                        `;
+                        break;
+                        
+                    case 1:
+                        description = `
+                            <h4>Kernel Matrix</h4>
+                            <p>The kernel defines how points relate to each other. Points close in input space (small x-distance) are highly correlated (bright cells), while distant points are less related. The kernel encodes our assumptions about the function's smoothness.</p>
+                            <p>Hover over the matrix cells to see which points they connect and their distance.</p>
+                        `;
+                        break;
+                        
+                    case 2:
+                        description = `
+                            <h4>Posterior Mean</h4>
+                            <p>The GP's best estimate of the underlying function, smoothly interpolating between data points. The mean is a weighted average of possible functions, with weights determined by the kernel. It passes exactly through points when there's no noise (σₙ²=0).</p>
+                        `;
+                        break;
+                        
+                    case 3:
+                        description = `
+                            <h4>Uncertainty Quantification</h4>
+                            <p>The confidence bands show where the GP is uncertain (wide bands) and where it's confident (narrow bands). Uncertainty grows as we move away from observed data points. The width depends on the kernel parameters and data density.</p>
+                        `;
+                        break;
+                }
+                
+                this.processDesc.innerHTML = description;
+            }
+
+            updateMatrixAnimation() {
+                this.matrixAnimation.innerHTML = '';
+                
+                if (this.dataPoints.length === 0) return;
+                
+                const K = this.computeKernelMatrix();
+                const n = K.length;
+                
+                // Create matrix cells
+                for (let i = 0; i < n; i++) {
+                    for (let j = 0; j < n; j++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'matrix-anim-cell';
+                        if (i === j) cell.classList.add('diagonal');
+                        
+                        // Add hover event listeners
+                        cell.addEventListener('mouseenter', () => this.highlightMatrixCell(i, j));
+                        cell.addEventListener('mouseleave', () => this.unhighlightMatrixCell());
+                        
+                        // Add point labels
+                        if (i === 0) {
+                            const colLabel = document.createElement('div');
+                            colLabel.className = 'matrix-point-label';
+                            colLabel.textContent = `x${j+1}`;
+                            colLabel.style.top = '-15px';
+                            colLabel.style.left = `${(j + 0.5) * (100 / n)}%`;
+                            this.matrixAnimation.appendChild(colLabel);
+                        }
+                        
+                        if (j === 0) {
+                            const rowLabel = document.createElement('div');
+                            rowLabel.className = 'matrix-point-label';
+                            rowLabel.textContent = `x${i+1}`;
+                            rowLabel.style.left = '-15px';
+                            rowLabel.style.top = `${(i + 0.5) * (100 / n)}%`;
+                            this.matrixAnimation.appendChild(rowLabel);
+                        }
+                        
+                        // Add calculation explanation
+                        const calculation = document.createElement('div');
+                        calculation.className = 'calculation';
+                        
+                        if (i === j) {
+                            calculation.innerHTML = `
+                                K(x${i+1}, x${j+1}) = ${K[i][j].toFixed(3)}<br>
+                                (Diagonal: + noise ${this.noiseVariance.toFixed(3)})
+                            `;
+                        } else {
+                            const dist = Math.abs(this.dataPoints[i].x - this.dataPoints[j].x).toFixed(3);
+                            calculation.innerHTML = `
+                                K(x${i+1}, x${j+1}) = ${K[i][j].toFixed(3)}<br>
+                                Distance: ${dist}<br>
+                                Length: ${this.lengthScale.toFixed(2)}
+                            `;
+                        }
+                        
+                        cell.appendChild(calculation);
+                        cell.textContent = K[i][j].toFixed(2);
+                        
+                        // Color intensity based on value
+                        const intensity = K[i][j] / Math.max(...K.flat());
+                        cell.style.backgroundColor = `rgba(74, 111, 165, ${intensity * 0.7})`;
+                        cell.style.color = intensity > 0.5 ? 'white' : 'rgba(74, 111, 165, 0.8)';
+                        
+                        this.matrixAnimation.appendChild(cell);
+                    }
+                }
+            }
+
+            animateMatrixFormation() {
+                const cells = document.querySelectorAll('.matrix-anim-cell');
+                let delay = 0;
+                
+                // Show play button and hide pause button
+                document.getElementById('animMatrixBtn').style.display = 'none';
+                document.getElementById('pauseMatrixBtn').style.display = 'flex';
+                
+                // Clear any existing animation
+                clearInterval(this.matrixAnimationInterval);
+                
+                // Reset all cells first
+                cells.forEach(cell => {
+                    cell.classList.remove('highlight');
+                });
+                
+                // Animate each cell with a delay
+                let currentIndex = 0;
+                this.matrixAnimationInterval = setInterval(() => {
+                    if (currentIndex >= cells.length) {
+                        clearInterval(this.matrixAnimationInterval);
+                        document.getElementById('animMatrixBtn').style.display = 'flex';
+                        document.getElementById('pauseMatrixBtn').style.display = 'none';
+                        return;
+                    }
+                    
+                    const cell = cells[currentIndex];
+                    cell.classList.add('highlight');
+                    
+                    // Remove highlight after animation
+                    setTimeout(() => {
+                        cell.classList.remove('highlight');
+                    }, 500);
+                    
+                    currentIndex++;
+                }, 200); // 200ms between each cell
+            }
+
+            pauseMatrixAnimation() {
+                clearInterval(this.matrixAnimationInterval);
+                document.getElementById('animMatrixBtn').style.display = 'flex';
+                document.getElementById('pauseMatrixBtn').style.display = 'none';
+                
+                // Remove highlights from all cells
+                document.querySelectorAll('.matrix-anim-cell').forEach(cell => {
+                    cell.classList.remove('highlight');
+                });
+            }
+
+            explainMatrixCalculations() {
+                const cells = document.querySelectorAll('.matrix-anim-cell');
+                
+                // Toggle calculation display
+                cells.forEach(cell => {
+                    cell.classList.toggle('show-calculation');
+                });
+            }
+
+            updatePosteriorAnimation() {
+                if (this.dataPoints.length === 0) {
+                    document.getElementById('posteriorStep1').style.display = 'none';
+                    document.getElementById('posteriorStep2').style.display = 'none';
+                    document.getElementById('posteriorStep3').style.display = 'none';
+                    document.getElementById('posteriorStep4').style.display = 'none';
+                    document.getElementById('posteriorStep5').style.display = 'none';
+                    return;
+                }
+
+                const K = this.computeKernelMatrix();
+                const Kinv = this.invertMatrix(K);
+                const y = this.dataPoints.map(p => p.y);
+
+                // Step 1: Display kernel matrix
+                const kernelMatrixDisplay = document.getElementById('kernelMatrixDisplay');
+                kernelMatrixDisplay.innerHTML = '';
+                this.displayMatrix(K, kernelMatrixDisplay, 'matrix-element');
+
+                // Step 2: Display inverse matrix
+                const inverseMatrixDisplay = document.getElementById('inverseMatrixDisplay');
+                inverseMatrixDisplay.innerHTML = '';
+                this.displayMatrix(Kinv, inverseMatrixDisplay, 'matrix-element');
+
+                // Step 3: Display observation vector
+                const observationVectorDisplay = document.getElementById('observationVectorDisplay');
+                observationVectorDisplay.innerHTML = '';
+                this.displayVector(y, observationVectorDisplay, 'vector-element');
+
+                // Step 4: Display intermediate result (K⁻¹y)
+                const intermediateResultDisplay = document.getElementById('intermediateResultDisplay');
+                intermediateResultDisplay.innerHTML = '';
+                const intermediate = this.matrixVectorMultiply(Kinv, y);
+                this.displayVector(intermediate, intermediateResultDisplay, 'vector-element');
+
+                // Step 5: Display final posterior mean calculation
+                const posteriorMeanDisplay = document.getElementById('posteriorMeanDisplay');
+                posteriorMeanDisplay.innerHTML = '';
+                posteriorMeanDisplay.innerHTML = `
+                    <div class="calculation-text">
+                        The posterior mean at any point x* is computed as:<br>
+                        μ(x*) = k*ᵀ · (K⁻¹ · y)<br>
+                        Where k* is the vector of covariances between x* and training points
+                    </div>
+                `;
+
+                // Show the current step
+                this.updatePosteriorStep();
+            }
+
+            displayMatrix(matrix, container, elementClass) {
+                for (let i = 0; i < matrix.length; i++) {
+                    const rowDiv = document.createElement('div');
+                    rowDiv.className = 'matrix-row';
+                    
+                    for (let j = 0; j < matrix[i].length; j++) {
+                        const element = document.createElement('div');
+                        element.className = elementClass;
+                        if (i === j) element.classList.add('diagonal');
+                        element.textContent = matrix[i][j].toFixed(2);
+                        rowDiv.appendChild(element);
+                    }
+                    
+                    container.appendChild(rowDiv);
+                }
+            }
+
+            displayVector(vector, container, elementClass) {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'matrix-row';
+                
+                for (let i = 0; i < vector.length; i++) {
+                    const element = document.createElement('div');
+                    element.className = elementClass;
+                    element.textContent = vector[i].toFixed(2);
+                    rowDiv.appendChild(element);
+                }
+                
+                container.appendChild(rowDiv);
+            }
+
+            matrixVectorMultiply(matrix, vector) {
+                const result = [];
+                for (let i = 0; i < matrix.length; i++) {
+                    let sum = 0;
+                    for (let j = 0; j < vector.length; j++) {
+                        sum += matrix[i][j] * vector[j];
+                    }
+                    result.push(sum);
+                }
+                return result;
+            }
+
+            updatePosteriorStep() {
+                // Hide all steps
+                document.querySelectorAll('.posterior-step').forEach(step => {
+                    step.classList.remove('active');
+                });
+
+                // Show current step
+                const currentStep = document.getElementById(`posteriorStep${this.posteriorStep + 1}`);
+                if (currentStep) {
+                    currentStep.classList.add('active');
+                }
+
+                // Update progress bar
+                const progress = (this.posteriorStep + 1) / 5 * 100;
+                document.getElementById('posteriorProgressBar').style.width = `${progress}%`;
+            }
+
+            animatePosteriorCalculation() {
+                clearInterval(this.posteriorAnimationInterval);
+                
+                this.posteriorStep = 0;
+                this.updatePosteriorStep();
+
+                // Show play button and hide pause button
+                document.getElementById('animPosteriorBtn').style.display = 'none';
+                document.getElementById('pausePosteriorBtn').style.display = 'flex';
+
+                this.posteriorAnimationInterval = setInterval(() => {
+                    if (this.posteriorStep < 4) {
+                        this.posteriorStep++;
+                        this.updatePosteriorStep();
+                    } else {
+                        clearInterval(this.posteriorAnimationInterval);
+                        document.getElementById('animPosteriorBtn').style.display = 'flex';
+                        document.getElementById('pausePosteriorBtn').style.display = 'none';
+                    }
+                }, 1000);
+            }
+
+            pausePosteriorAnimation() {
+                clearInterval(this.posteriorAnimationInterval);
+                document.getElementById('animPosteriorBtn').style.display = 'flex';
+                document.getElementById('pausePosteriorBtn').style.display = 'none';
+            }
+
+            stepPosteriorCalculation() {
+                clearInterval(this.posteriorAnimationInterval);
+                document.getElementById('animPosteriorBtn').style.display = 'flex';
+                document.getElementById('pausePosteriorBtn').style.display = 'none';
+                
+                if (this.posteriorStep < 4) {
+                    this.posteriorStep++;
+                    this.updatePosteriorStep();
+                }
+            }
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            const gpVisualizer = new GaussianProcessVisualizer();
+            
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                setTimeout(() => {
+                    gpVisualizer.setupCanvas();
+                    gpVisualizer.updateVisualization();
+                }, 100);
+            });
+        });
+    </script>
+</body>
+</html>
