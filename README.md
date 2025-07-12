@@ -2,6 +2,10 @@
 
 **🔗 [View the Interactive Demo](https://nbahador.github.io/Interactive_Gaussian_Process_Visualizer/Gaussian%20Process%20Visual%20Explorer.html)**
 
+
+![Interactive_Gaussian_Process_Visualizer](/img1.png)
+
+
 ---
 
 An interactive educational tool that demonstrates the mathematical process behind Gaussian Processes through step-by-step visualizations. This visualizer makes abstract concepts like kernel matrices and posterior distributions tangible by providing immediate visual feedback as users adjust parameters.
