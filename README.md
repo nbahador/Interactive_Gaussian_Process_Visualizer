@@ -1,6 +1,6 @@
 # Interactive Gaussian Process Visualizer
 
-**🔗 [View the Interactive Demo](https://nbahador.github.io/Interactive_Gaussian_Process_Visualizer/Gaussian%20Process%20Visual%20Explorer.html)**
+<span style="font-size: 20px;"><strong>🔗 <a href="https://nbahador.github.io/Interactive_Gaussian_Process_Visualizer/Gaussian%20Process%20Visual%20Explorer.html">View the Interactive Demo</a></strong></span>
 
 
 ![Interactive_Gaussian_Process_Visualizer](/img1.png)
